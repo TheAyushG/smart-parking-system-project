@@ -1,0 +1,95 @@
+.parking-map-container {
+  width: 100%;
+  margin: 2rem 0;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1rem;
+}
+
+/* Custom marker styling */
+.custom-parking-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Dark theme for map tiles */
+.leaflet-container {
+  background: #2a2a2a;
+  filter: brightness(0.8) contrast(1.1);
+}
+
+.dark-theme .leaflet-container {
+  background: #1a1a2e;
+  filter: brightness(0.7) contrast(1.2);
+}
+
+/* Popup styling */
+.map-popup {
+  text-align: center;
+  min-width: 150px;
+}
+
+.map-popup h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.map-popup p {
+  margin: 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.map-popup-button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.map-popup-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+}
+
+/* Leaflet popup dark theme */
+.dark-theme .leaflet-popup-content-wrapper {
+  background: #2a2a2a;
+  color: white;
+  border-radius: 10px;
+}
+
+.dark-theme .leaflet-popup-tip {
+  background: #2a2a2a;
+}
+
+.dark-theme .map-popup h3 {
+  color: white;
+}
+
+.dark-theme .map-popup p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 768px) {
+  .parking-map-container {
+    padding: 0.5rem;
+    margin: 1rem 0;
+  }
+
+  .parking-map-container .leaflet-container {
+    height: 400px !important;
+  }
+}
+
+

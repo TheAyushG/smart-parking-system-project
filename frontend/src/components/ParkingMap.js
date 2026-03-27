@@ -1,6 +1,7 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import MapSearch from './MapSearch';
 import './ParkingMap.css';
 
 // Fix for default marker icons in React-Leaflet
@@ -40,17 +41,40 @@ const createParkingIcon = (color = '#667eea') => {
   });
 };
 
-// Coordinates for Jaipur locations (approximate)
 const locationCoordinates = {
   'Jagatpura': [26.8395, 75.8235],
   'Malviya Nagar': [26.8519, 75.8138],
   'Ramniwas Garden': [26.9126, 75.7905],
   'Raja Park': [26.8945, 75.8002],
   'Bani Park': [26.9181, 75.8087],
-  'Tonk Road Parking': [26.8650, 75.7850]
+  'Tonk Road Parking': [26.8650, 75.7850],
+  'Vaishali Nagar': [26.9075, 75.7397],
+  'Mansarovar': [26.8530, 75.7629],
+  'Tonk Road': [26.8548, 75.7942],
+  'MI Road': [26.9155, 75.8055],
+  'Civil Lines': [26.9056, 75.7820]
 };
 
-const ParkingMap = ({ locations = [], onLocationClick }) => {
+function MapUpdater({ center }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (center) {
+      map.flyTo(center, 14, { duration: 1.5 });
+    }
+  }, [center, map]);
+  return null;
+}
+
+const ParkingMap = ({ locations = [], onLocationClick, onSearchSelect }) => {
+  const [searchCenter, setSearchCenter] = useState(null);
+
+  const handleLocationSelect = (lat, lon, place) => {
+    setSearchCenter([lat, lon]);
+    if (onSearchSelect) {
+      onSearchSelect(place);
+    }
+  };
+
   // Calculate center of all locations
   const getMapCenter = () => {
     if (!locations || locations.length === 0) {
@@ -58,7 +82,7 @@ const ParkingMap = ({ locations = [], onLocationClick }) => {
     }
 
     const coords = locations
-      .map(loc => locationCoordinates[loc.locationName])
+      .map(loc => loc.coordinates || locationCoordinates[loc.locationName])
       .filter(coord => coord !== undefined);
     
     if (coords.length === 0) {
@@ -81,18 +105,20 @@ const ParkingMap = ({ locations = [], onLocationClick }) => {
 
   return (
     <div className="parking-map-container">
+      <MapSearch onLocationSelect={handleLocationSelect} />
       <MapContainer
         center={getMapCenter()}
         zoom={12}
         style={{ height: '500px', width: '100%', borderRadius: '15px', zIndex: 0 }}
         scrollWheelZoom={true}
       >
+        {searchCenter && <MapUpdater center={searchCenter} />}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {locations.map((location, index) => {
-          const coords = locationCoordinates[location.locationName];
+          const coords = location.coordinates || locationCoordinates[location.locationName];
           if (!coords) return null;
           
           return (

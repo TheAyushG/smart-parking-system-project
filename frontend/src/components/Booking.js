@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchParkingData, createBooking } from '../services/api';
+import { fetchParkingData, createBooking, verifyPayment } from '../services/api';
 import { FaCreditCard, FaLock, FaCheckCircle, FaArrowLeft } from 'react-icons/fa';
 import './Booking.css';
 
@@ -10,11 +10,9 @@ const Booking = () => {
   const [parkingData, setParkingData] = useState(null);
   const [slot, setSlot] = useState(null);
   const [duration, setDuration] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
+  const [startTime, setStartTime] = useState(
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16)
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
@@ -30,35 +28,97 @@ const Booking = () => {
       const foundSlot = data.slots.find(s => s.slotNumber === parseInt(slotNumber));
       if (foundSlot) {
         setSlot(foundSlot);
-        if (!foundSlot.isAvailable) {
-          alert('This slot is no longer available');
-          navigate(`/location/${locationName}`);
-        }
+        // We no longer navigate away if unavailable, allowing future bookings.
       }
     } catch (error) {
       console.error('Error loading slot data:', error);
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePayment = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(async () => {
-      try {
-        const totalPrice = slot.price * duration;
-        
-        // Create booking
-        const result = await createBooking(locationName, parseInt(slotNumber), duration);
-        
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) {
+        alert('Razorpay SDK failed to load. Are you online?');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create Order
+      const result = await createBooking(locationName, parseInt(slotNumber), duration, startTime);
+
+      // Support for dynamic local test bypass
+      if (!result.razorpayOrder) {
         setBookingDetails(result.booking);
         setBookingConfirmed(true);
-      } catch (error) {
-        alert(error.response?.data?.message || 'Booking failed. Please try again.');
         setIsProcessing(false);
+        return;
       }
-    }, 2000);
+
+      // Open Razorpay Popup
+      const options = {
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+        amount: result.razorpayOrder.amount, // Amount is in currency subunits. 
+        currency: result.razorpayOrder.currency,
+        name: 'Smart Parking',
+        description: `Booking for ${locationName} - Slot #${slotNumber}`,
+        order_id: result.razorpayOrder.id,
+        handler: async function (response) {
+          try {
+            // Verify Payment
+            const verifyResult = await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: result.booking._id
+            });
+            
+            setBookingDetails(verifyResult.booking);
+            setBookingConfirmed(true);
+          } catch (err) {
+            console.error(err);
+            alert('Payment verification failed. Please contact support.');
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: "Test User",
+          email: "testuser@example.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#3498db"
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      
+      paymentObject.on('payment.failed', function (response) {
+        alert('Payment Failed: ' + response.error.description);
+        setIsProcessing(false);
+      });
+
+      paymentObject.open();
+
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.message || 'Booking failed. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   const totalPrice = slot ? slot.price * duration : 0;
@@ -116,6 +176,22 @@ const Booking = () => {
                 <span>Price per hour:</span>
                 <strong>₹{slot.price}</strong>
               </div>
+              {!slot.isAvailable && (
+                <div className="summary-row warning" style={{color: '#d9534f', fontSize: '0.9rem', marginBottom: '10px'}}>
+                  <em>Note: This slot is currently occupied. Please choose a future start time.</em>
+                </div>
+              )}
+              <div className="summary-row">
+                <span>Start Time:</span>
+                <input 
+                  type="datetime-local" 
+                  value={startTime} 
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="duration-select"
+                  style={{ width: '180px' }}
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16)}
+                />
+              </div>
               <div className="summary-row">
                 <span>Duration:</span>
                 <select 
@@ -139,93 +215,13 @@ const Booking = () => {
                 <FaCreditCard /> Payment Details
               </h2>
 
-              <div className="payment-methods">
-                <label className={`payment-option ${paymentMethod === 'card' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="card"
-                    checked={paymentMethod === 'card'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <span>Credit/Debit Card</span>
-                </label>
-                <label className={`payment-option ${paymentMethod === 'wallet' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="wallet"
-                    checked={paymentMethod === 'wallet'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  />
-                  <span>Digital Wallet</span>
-                </label>
+              <div className="payment-methods" style={{textAlign: 'center', marginBottom: '20px'}}>
+                <p>You will be redirected to Razorpay to complete your transaction securely.</p>
+                <img src="/razorpay-logo.png" alt="Razorpay" style={{ height: '30px', margin: '15px auto', display: 'block', opacity: 0.5 }} onError={(e) => e.target.style.display='none'} />
               </div>
 
-              {paymentMethod === 'card' && (
-                <div className="card-form">
-                  <div className="form-group">
-                    <label>Card Number</label>
-                    <input
-                      type="text"
-                      placeholder="1234 5678 9012 3456"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                      maxLength="16"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Cardholder Name</label>
-                    <input
-                      type="text"
-                      placeholder="John Doe"
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Expiry Date</label>
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        value={cardExpiry}
-                        onChange={(e) => {
-                          let value = e.target.value.replace(/\D/g, '');
-                          if (value.length >= 2) {
-                            value = value.slice(0, 2) + '/' + value.slice(2, 4);
-                          }
-                          setCardExpiry(value);
-                        }}
-                        maxLength="5"
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>CVV</label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                        maxLength="3"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'wallet' && (
-                <div className="wallet-info">
-                  <p>This is a simulation. In production, you would integrate with payment gateways like Razorpay, Paytm, etc.</p>
-                </div>
-              )}
-
               <div className="security-note">
-                <FaLock /> Your payment information is secure and encrypted
+                <FaLock /> Your payment information is secure and encrypted by Razorpay
               </div>
 
               <button 

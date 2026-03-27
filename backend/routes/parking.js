@@ -3,6 +3,42 @@ const ParkingSlot = require('../models/ParkingSlot');
 
 const router = express.Router();
 
+// Get place images using Google Places API
+router.get('/place-images', async (req, res) => {
+  try {
+    const { query } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(500).json({ message: 'Google Maps API key not configured' });
+    }
+
+    // Step 1: Find Place ID and photos
+    const findPlaceUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=photos&key=${apiKey}`;
+    const findResponse = await fetch(findPlaceUrl);
+    const findData = await findResponse.json();
+
+    if (findData.status !== 'OK' || !findData.candidates || findData.candidates.length === 0) {
+      return res.status(404).json({ message: 'Place not found or no photos available', images: [] });
+    }
+
+    const photos = findData.candidates[0].photos;
+    if (!photos || photos.length === 0) {
+      return res.status(404).json({ message: 'No photos found for this place', images: [] });
+    }
+
+    // Step 2: Construct Photo URLs
+    const photoUrls = photos.slice(0, 3).map(photo => {
+      return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${apiKey}`;
+    });
+
+    res.json({ images: photoUrls });
+  } catch (error) {
+    console.error('Error fetching place images:', error);
+    res.status(500).json({ message: 'Error fetching place images' });
+  }
+});
+
 // Get all locations
 router.get('/locations', async (req, res) => {
   try {

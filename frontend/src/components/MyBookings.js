@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchMyBookings, cancelBooking } from '../services/api';
-import { FaReceipt, FaTimes, FaMapMarkerAlt, FaClock, FaRupeeSign } from 'react-icons/fa';
+import { fetchMyBookings, cancelBooking, checkoutBooking } from '../services/api';
+import { FaReceipt, FaTimes, FaMapMarkerAlt, FaClock, FaRupeeSign, FaExclamationTriangle } from 'react-icons/fa';
 import './MyBookings.css';
 
 const MyBookings = () => {
@@ -54,8 +54,83 @@ const MyBookings = () => {
     }
   };
 
-  const isExpired = (expiresAt) => {
-    return new Date(expiresAt) < new Date();
+  const isExpired = (expiresAt, endTime) => {
+    const date = new Date(endTime || expiresAt);
+    return isNaN(date.getTime()) ? false : date < new Date();
+  };
+
+  const handleCheckout = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to end your parking and release this slot? Any overstay charges will be finalized.')) return;
+    try {
+      await checkoutBooking(bookingId);
+      loadBookings();
+      alert('Checkout successful! Parking slot released.');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to checkout');
+    }
+  };
+
+  const BookingTimer = ({ booking }) => {
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+      const timer = setInterval(() => setNow(new Date()), 1000);
+      return () => clearInterval(timer);
+    }, []);
+
+    if (booking.status !== 'confirmed') return null;
+
+    const endTime = new Date(booking.endTime || booking.expiresAt);
+    const startTime = new Date(booking.startTime || booking.bookingDate);
+
+    if (now < startTime) {
+      const diffMs = startTime - now;
+      const hrs = Math.floor(diffMs / 3600000);
+      const mins = Math.floor((diffMs % 3600000) / 60000);
+      return <div className="timer-panel upcoming">Starts in {hrs}h {mins}m</div>;
+    }
+
+    const isOverstay = now > endTime;
+    const diffMs = isOverstay ? now - endTime : endTime - now;
+    
+    const hrs = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000).toString().padStart(2, '0');
+    const secs = Math.floor((diffMs % 60000) / 1000).toString().padStart(2, '0');
+    
+    const timeStr = `${hrs > 0 ? hrs + ':' : ''}${mins}:${secs}`;
+
+    let dynamicPrice = booking.price;
+    if (isOverstay) {
+      const overstayHours = Math.ceil(diffMs / 3600000);
+      const hourlyRate = booking.price / (booking.duration || 1);
+      const penalty = overstayHours * hourlyRate * 1.5;
+      dynamicPrice = booking.price + Math.round(penalty);
+    }
+
+    const isWarning = !isOverstay && diffMs <= 15 * 60 * 1000;
+
+    return (
+      <div className={`booking-timer-panel ${isOverstay ? 'overstay' : isWarning ? 'warning' : 'active'}`}>
+        <div className="timer-display">
+          {isOverstay && <FaExclamationTriangle className="pulse-icon" style={{marginRight: '8px'}} />}
+          {isOverstay ? (
+            <><strong>OVERSTAY:</strong> {timeStr}</>
+          ) : (
+            <><strong>{isWarning ? 'ENDING SOON:' : 'TIME REMAINING:'}</strong> {timeStr}</>
+          )}
+        </div>
+        
+        {isOverstay && (
+          <div className="dynamic-price-alert">
+            Total Penalty Price: <strong>₹{dynamicPrice}</strong>
+          </div>
+        )}
+
+        <button className="end-parking-btn" onClick={() => handleCheckout(booking._id)}>
+          End Parking
+        </button>
+      </div>
+    );
   };
 
   if (loading) {
@@ -138,7 +213,7 @@ const MyBookings = () => {
                   <div className="booking-info-row">
                     <div>
                       <span className="label">Expires At:</span>
-                      <strong>{new Date(booking.expiresAt).toLocaleString()}</strong>
+                      <strong>{new Date(booking.endTime || booking.expiresAt).toLocaleString()}</strong>
                     </div>
                   </div>
 
@@ -159,20 +234,25 @@ const MyBookings = () => {
                   </div>
                 </div>
 
-                {booking.status === 'confirmed' && !isExpired(booking.expiresAt) && (
+                {booking.status === 'confirmed' && (
                   <div className="booking-actions">
-                    <button
-                      onClick={() => handleCancel(booking._id)}
-                      className="cancel-button"
-                    >
-                      <FaTimes /> Cancel Booking
-                    </button>
-                    <button
-                      onClick={() => navigate(`/location/${booking.locationName}`)}
-                      className="view-button"
-                    >
-                      View Location
-                    </button>
+                    <BookingTimer booking={booking} />
+                    
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                      <button
+                        onClick={() => handleCancel(booking._id)}
+                        className="cancel-button"
+                      >
+                        <FaTimes /> Cancel
+                      </button>
+                      <button
+                        onClick={() => navigate(`/location/${booking.locationName}`)}
+                        className="view-button"
+                        style={{ flex: 1 }}
+                      >
+                        Map
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

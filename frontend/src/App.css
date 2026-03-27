@@ -40,8 +40,41 @@
 /* Responsive */
 @media (max-width: 768px) {
   .App {
-    padding-bottom: 1rem;
   }
 }
 
+.global-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  z-index: 9999;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideInUpToast 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.global-toast.success {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  border-left: 5px solid #1a8f4c;
+}
+
+.global-toast.info {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  border-left: 5px solid #d32f2f;
+}
+
+@keyframes slideInUpToast {
+  from { 
+    transform: translateY(100px); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+}
 

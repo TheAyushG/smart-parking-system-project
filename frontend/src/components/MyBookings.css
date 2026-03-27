@@ -219,4 +219,101 @@
   }
 }
 
+/* Timer panel styles */
+.booking-timer-panel {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,240,250,0.9) 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.booking-timer-panel.active {
+  border-left: 5px solid #43e97b;
+}
+
+.booking-timer-panel.warning {
+  border-left: 5px solid #f6d365;
+  background: linear-gradient(135deg, rgba(255,250,230,0.9) 0%, rgba(255,240,200,0.9) 100%);
+}
+
+.booking-timer-panel.overstay {
+  border-left: 5px solid #f5576c;
+  background: linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%);
+  animation: pulse-bg 2s infinite;
+}
+
+@keyframes pulse-bg {
+  0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 87, 108, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); }
+}
+
+.pulse-icon {
+  color: #f5576c;
+  animation: pulse-icon 1s infinite alternate;
+}
+
+@keyframes pulse-icon {
+  from { transform: scale(1); opacity: 0.8; }
+  to { transform: scale(1.2); opacity: 1; }
+}
+
+.timer-display {
+  font-size: 1.4rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.dynamic-price-alert {
+  font-size: 1.1rem;
+  color: #c33;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  display: inline-block;
+  text-align: center;
+  font-weight: 500;
+  border: 1px dashed #f5576c;
+}
+
+.dynamic-price-alert strong {
+  font-size: 1.3rem;
+  color: #d32f2f;
+}
+
+.end-parking-btn {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.end-parking-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(245, 87, 108, 0.4);
+}
+
+.timer-panel.upcoming {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #667eea;
+  font-weight: bold;
+  text-align: center;
+  border: 1px dashed #667eea;
+}
 

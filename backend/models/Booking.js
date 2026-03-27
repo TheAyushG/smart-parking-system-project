@@ -26,21 +26,37 @@ const bookingSchema = new mongoose.Schema({
     type: Number, // in hours
     default: 1
   },
-  expiresAt: {
+  startTime: {
+    type: Date,
+    required: true
+  },
+  endTime: {
     type: Date,
     required: true
   },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'completed', 'cancelled'],
-    default: 'confirmed'
+    default: 'pending'
   },
   paymentStatus: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
-    default: 'completed'
+    default: 'pending'
   },
   transactionId: {
+    type: String,
+    default: null
+  },
+  razorpayOrderId: {
+    type: String,
+    default: null
+  },
+  razorpayPaymentId: {
+    type: String,
+    default: null
+  },
+  razorpaySignature: {
     type: String,
     default: null
   }

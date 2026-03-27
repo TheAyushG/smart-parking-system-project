@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchParkingData } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { socket } from '../services/socket';
 import { FaParking, FaArrowLeft, FaCheck, FaTimes, FaDollarSign } from 'react-icons/fa';
 import './LocationView.css';
 
@@ -15,9 +16,26 @@ const LocationView = () => {
 
   useEffect(() => {
     loadParkingData();
-    // Refresh every 3 seconds for real-time updates
-    const interval = setInterval(loadParkingData, 3000);
-    return () => clearInterval(interval);
+
+    const handleSlotUpdate = (updateData) => {
+      if (updateData.locationName === locationName) {
+        setParkingData(prevData => {
+          if (!prevData) return prevData;
+          const newSlots = prevData.slots.map(slot => 
+            slot.slotNumber === updateData.slotNumber
+              ? { ...slot, isAvailable: updateData.isAvailable }
+              : slot
+          );
+          return { ...prevData, slots: newSlots };
+        });
+      }
+    };
+
+    socket.on('slotUpdate', handleSlotUpdate);
+
+    return () => {
+      socket.off('slotUpdate', handleSlotUpdate);
+    };
   }, [locationName]);
 
   const loadParkingData = async () => {
@@ -32,8 +50,6 @@ const LocationView = () => {
   };
 
   const handleSlotClick = (slot) => {
-    if (!slot.isAvailable) return;
-    
     if (!isAuthenticated) {
       alert('Please login to book a parking slot');
       navigate('/login');
@@ -147,7 +163,10 @@ const LocationView = () => {
               <h3>Selected Slot: #{selectedSlot.slotNumber}</h3>
               <div className="booking-details">
                 <p><strong>Price:</strong> ₹{selectedSlot.price}/hour</p>
-                <p><strong>Status:</strong> Available</p>
+                <p>
+                  <strong>Status:</strong>{' '}
+                  {selectedSlot.isAvailable ? 'Available Now' : 'Currently Occupied (Pre-book available)'}
+                </p>
               </div>
               <button onClick={handleBookNow} className="book-button">
                 Proceed to Booking

@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaSignInAlt, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaEnvelope, FaKey } from 'react-icons/fa';
 import './Auth.css';
 
-const Login = () => {
+const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { forgotPassword } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
-    const result = await login(email, password);
+    const result = await forgotPassword(email);
     
     if (result.success) {
-      navigate('/');
+      // In a real app this would just say "Email sent". 
+      // For testing, we show the token or a link directly since we don't send emails.
+      setMessage(result.message);
     } else {
       setError(result.message);
     }
@@ -33,12 +35,13 @@ const Login = () => {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <FaSignInAlt className="auth-icon" />
-            <h2>Login to Your Account</h2>
-            <p>Welcome back! Please login to continue.</p>
+            <FaKey className="auth-icon" />
+            <h2>Forgot Password</h2>
+            <p>Enter your email to reset your password.</p>
           </div>
 
           {error && <div className="error-message">{error}</div>}
+          {message && <div className="success-message" style={{color: '#155724', backgroundColor: '#d4edda', padding: '10px', borderRadius: '4px', marginBottom: '15px'}}>{message}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
@@ -54,30 +57,14 @@ const Login = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label>
-                <FaLock /> Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-              <div style={{ textAlign: 'right', marginTop: '5px' }}>
-                <Link to="/forgot-password" style={{ fontSize: '0.9rem', color: '#667eea', textDecoration: 'none' }}>Forgot Password?</Link>
-              </div>
-            </div>
-
             <button type="submit" className="auth-button" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Sending...' : 'Reset Password'}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Don't have an account? <Link to="/register">Register here</Link>
+              Remembered your password? <Link to="/login">Login here</Link>
             </p>
           </div>
         </div>
@@ -86,6 +73,4 @@ const Login = () => {
   );
 };
 
-export default Login;
-
-
+export default ForgotPassword;

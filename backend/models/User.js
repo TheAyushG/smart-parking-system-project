@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   vehicles: [{
     vehicleNumber: String,
     vehicleType: String

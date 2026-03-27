@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { socket } from './services/socket';
 import HomePage from './components/HomePage';
 import LocationView from './components/LocationView';
 import Booking from './components/Booking';
 import Login from './components/Login';
 import Register from './components/Register';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import MyBookings from './components/MyBookings';
 import AboutUs from './components/AboutUs';
 import ContactUs from './components/ContactUs';
@@ -30,6 +33,8 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/about" element={<AboutUs />} />
       <Route path="/contact" element={<ContactUs />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -73,12 +78,41 @@ function AppRoutes() {
   );
 }
 
+function GlobalNotificationListener() {
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    const handleSlotUpdate = (data) => {
+      setToast({
+        id: Date.now(),
+        message: `Slot #${data.slotNumber} ${data.isAvailable ? 'freed' : 'booked'} at ${data.locationName}!`,
+        type: data.isAvailable ? 'success' : 'info'
+      });
+      // Auto-hide after 4 seconds
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    };
+
+    socket.on('slotUpdate', handleSlotUpdate);
+    return () => socket.off('slotUpdate', handleSlotUpdate);
+  }, []);
+
+  if (!toast) return null;
+
+  return (
+    <div key={toast.id} className={`global-toast ${toast.type}`}>
+      {toast.message}
+    </div>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
           <div className="App">
+            <GlobalNotificationListener />
             <Navbar />
             <AppRoutes />
           </div>

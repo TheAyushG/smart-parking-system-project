@@ -1,4 +1,9 @@
 const express = require('express');
+const http = require('http');
+const cron = require('node-cron');
+const Booking = require('./models/Booking');
+const ParkingSlot = require('./models/ParkingSlot');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -6,6 +11,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Middleware - CORS Configuration
@@ -40,6 +46,62 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Socket.IO Initialization
+const io = new Server(server, { cors: corsOptions });
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('New client connected:', socket.id);
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Automated Slot Availability Job (Runs every minute)
+cron.schedule('* * * * *', async () => {
+  try {
+    const now = new Date();
+    const parkingDataList = await ParkingSlot.find();
+    const activeBookings = await Booking.find({
+      startTime: { $lte: now },
+      status: 'confirmed'
+    });
+
+    for (const parkingData of parkingDataList) {
+      let isChanged = false;
+      for (const slot of parkingData.slots) {
+        const isActive = activeBookings.some(b => 
+          b.locationName === parkingData.locationName && b.slotNumber === slot.slotNumber
+        );
+        const shouldBeAvailable = !isActive;
+        
+        if (slot.isAvailable !== shouldBeAvailable) {
+          slot.isAvailable = shouldBeAvailable;
+          if (shouldBeAvailable) {
+            slot.bookedBy = null;
+            slot.bookedUntil = null;
+          }
+          isChanged = true;
+          
+          if (io) {
+            io.emit('slotUpdate', {
+              locationName: parkingData.locationName,
+              slotNumber: slot.slotNumber,
+              isAvailable: shouldBeAvailable
+            });
+          }
+        }
+      }
+      if (isChanged) {
+        await parkingData.save();
+        await parkingData.calculateDynamicPrice();
+      }
+    }
+  } catch (err) {
+    console.error('Error in automated slot job:', err);
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/parking', require('./routes/parking'));
@@ -72,7 +134,12 @@ async function initializeParkingSlots() {
     { name: 'Ramniwas Garden', totalSlots: 40 },
     { name: 'Raja Park', totalSlots: 45 },
     { name: 'Bani Park', totalSlots: 55 },
-    { name: 'Tonk Road Parking', totalSlots: 50 }
+    { name: 'Tonk Road Parking', totalSlots: 50 },
+    { name: 'Vaishali Nagar', totalSlots: 65 },
+    { name: 'Mansarovar', totalSlots: 80 },
+    { name: 'Tonk Road', totalSlots: 55 },
+    { name: 'MI Road', totalSlots: 40 },
+    { name: 'Civil Lines', totalSlots: 45 }
   ];
 
   for (const location of locations) {
@@ -82,8 +149,8 @@ async function initializeParkingSlots() {
       for (let i = 1; i <= location.totalSlots; i++) {
         slots.push({
           slotNumber: i,
-          isAvailable: Math.random() > 0.4, // Random initial availability
-          price: 20 + Math.floor(Math.random() * 30) // Price between 20-50
+          isAvailable: true, // 100% available at start
+          price: 20 + Math.floor(Math.random() * 30) // Price strictly 20-50
         });
       }
       
@@ -101,7 +168,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date() });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 

@@ -81,6 +81,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/forgot-password`, { email });
+      const resetLink = `${window.location.origin}/reset-password/${response.data.resetToken}`;
+      return { 
+        success: true, 
+        message: `Token generated! Copy this link to reset: ${resetLink}` 
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to send reset email'
+      };
+    }
+  };
+
+  const resetPassword = async (token, password) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/reset-password/${token}`, { password });
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reset password'
+      };
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -95,6 +123,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    forgotPassword,
+    resetPassword,
     loading
   };
 

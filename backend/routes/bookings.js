@@ -3,6 +3,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const ParkingSlot = require('../models/ParkingSlot');
+const Notification = require('../models/Notification');
 const authenticateToken = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -123,6 +124,15 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
 
     await booking.save();
 
+    // Create Notification
+    const notification = new Notification({
+      user: req.userId,
+      title: 'Booking Confirmed!',
+      message: `Your booking for slot ${booking.slotNumber} at ${booking.locationName} is successfully confirmed.`,
+      type: 'success'
+    });
+    await notification.save();
+
     // Trigger availability updates
     const parkingData = await ParkingSlot.findOne({ locationName: booking.locationName });
     const now = new Date();
@@ -138,6 +148,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
 
       const io = req.app.get('io');
       if (io) {
+        io.emit('newNotification', notification);
         io.emit('slotUpdate', {
           locationName: booking.locationName,
           slotNumber: booking.slotNumber,
@@ -198,8 +209,17 @@ router.patch('/cancel/:bookingId', authenticateToken, async (req, res) => {
         await parkingData.save();
         await parkingData.calculateDynamicPrice();
 
+        const notification = new Notification({
+          user: req.userId,
+          title: 'Booking Cancelled',
+          message: `Your booking at ${booking.locationName} has been cancelled successfully.`,
+          type: 'warning'
+        });
+        await notification.save();
+
         const io = req.app.get('io');
         if (io) {
+          io.emit('newNotification', notification);
           io.emit('slotUpdate', {
             locationName: booking.locationName,
             slotNumber: booking.slotNumber,
@@ -256,8 +276,17 @@ router.patch('/checkout/:bookingId', authenticateToken, async (req, res) => {
         await parkingData.save();
         await parkingData.calculateDynamicPrice();
 
+        const notification = new Notification({
+          user: req.userId,
+          title: 'Parking Completed',
+          message: `You successfully checked out from ${booking.locationName}. Total paid: ₹${finalPrice}.`,
+          type: 'info'
+        });
+        await notification.save();
+
         const io = req.app.get('io');
         if (io) {
+          io.emit('newNotification', notification);
           io.emit('slotUpdate', {
             locationName: booking.locationName,
             slotNumber: booking.slotNumber,

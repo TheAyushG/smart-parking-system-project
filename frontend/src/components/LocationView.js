@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchParkingData } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { socket } from '../services/socket';
-import { FaParking, FaArrowLeft, FaCheck, FaTimes, FaDollarSign } from 'react-icons/fa';
+import { FaParking, FaArrowLeft, FaCheck, FaTimes, FaRupeeSign } from 'react-icons/fa';
 import './LocationView.css';
 
 const LocationView = () => {
@@ -102,7 +102,7 @@ const LocationView = () => {
             </div>
             <div className="stat-card price">
               <h3>
-                <FaDollarSign />
+                <FaRupeeSign />
                 {parkingData.basePrice}
               </h3>
               <p>Base Price/Hour</p>
@@ -151,7 +151,7 @@ const LocationView = () => {
                     )}
                   </div>
                   <div className="slot-price">
-                    <FaDollarSign /> {slot.price}/hr
+                    <FaRupeeSign /> {slot.price}/hr
                   </div>
                 </div>
               ))}

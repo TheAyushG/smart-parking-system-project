@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { socket } from '../services/socket';
 
 const AuthContext = createContext();
 
@@ -17,15 +18,72 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  
+  // Real-time Global Notification State
+  const [notifications, setNotifications] = useState([]);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
+      fetchNotifications();
     } else {
       setLoading(false);
+      setNotifications([]);
     }
   }, [token]);
+
+  useEffect(() => {
+    // Listen for WebSocket notifications perfectly targeted to this user's browser
+    const handleNewNotification = (notif) => {
+      // Ensure the notification is for the current user
+      if (user && notif.user === user._id) {
+        setNotifications(prev => [notif, ...prev]);
+      }
+    };
+    
+    socket.on('newNotification', handleNewNotification);
+    return () => {
+      socket.off('newNotification', handleNewNotification);
+    };
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/notifications`);
+      setNotifications(response.data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await axios.put(`${API_BASE_URL}/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await axios.put(`${API_BASE_URL}/notifications/read-all`);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchUser = async () => {
     try {
@@ -125,7 +183,12 @@ export const AuthProvider = ({ children }) => {
     logout,
     forgotPassword,
     resetPassword,
-    loading
+    loading,
+    notifications,
+    unreadCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

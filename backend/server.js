@@ -106,6 +106,7 @@ cron.schedule('* * * * *', async () => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/parking', require('./routes/parking'));
 app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ayush_gurjar_parking:BATMANbatman%23123@parkingsystem.m8yupmj.mongodb.net/parkingsystem?retryWrites=true&w=majority';

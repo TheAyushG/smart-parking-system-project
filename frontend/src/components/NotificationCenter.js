@@ -1,66 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { FaBell, FaCheck, FaTimes, FaInfoCircle, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import './NotificationCenter.css';
 
 const NotificationCenter = () => {
-  const { isAuthenticated } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    // Simulate loading notifications
-    if (isAuthenticated) {
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'success',
-          title: 'Booking Confirmed',
-          message: 'Your booking at Jagatpura, Slot #5 has been confirmed',
-          time: '2 hours ago',
-          read: false
-        },
-        {
-          id: 2,
-          type: 'info',
-          title: 'Booking Reminder',
-          message: 'Your booking at Malviya Nagar expires in 1 hour',
-          time: '5 hours ago',
-          read: false
-        },
-        {
-          id: 3,
-          type: 'warning',
-          title: 'Payment Pending',
-          message: 'Please complete payment for your booking at Raja Park',
-          time: '1 day ago',
-          read: true
-        },
-        {
-          id: 4,
-          type: 'success',
-          title: 'Welcome!',
-          message: 'Thank you for joining Smart Parking. Start booking your first slot!',
-          time: '2 days ago',
-          read: true
-        }
-      ];
-      setNotifications(mockNotifications);
-    }
-  }, [isAuthenticated]);
-
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(notif =>
-      notif.id === id ? { ...notif, read: true } : notif
-    ));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notif => ({ ...notif, read: true })));
-  };
-
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter(notif => notif.id !== id));
-  };
+  const { 
+    isAuthenticated,
+    notifications,
+    unreadCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification
+  } = useAuth();
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -75,7 +26,10 @@ const NotificationCenter = () => {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
 
   if (!isAuthenticated) {
     return (
@@ -100,7 +54,7 @@ const NotificationCenter = () => {
             )}
           </div>
           {unreadCount > 0 && (
-            <button onClick={markAllAsRead} className="mark-all-btn">
+            <button onClick={markAllNotificationsAsRead} className="mark-all-btn">
               Mark all as read
             </button>
           )}
@@ -115,7 +69,7 @@ const NotificationCenter = () => {
           <div className="notifications-list">
             {notifications.map((notification) => (
               <div
-                key={notification.id}
+                key={notification._id}
                 className={`notification-item fade-in ${notification.read ? 'read' : 'unread'}`}
               >
                 <div className="notification-icon">
@@ -124,12 +78,12 @@ const NotificationCenter = () => {
                 <div className="notification-content">
                   <h3>{notification.title}</h3>
                   <p>{notification.message}</p>
-                  <span className="notification-time">{notification.time}</span>
+                  <span className="notification-time">{formatTime(notification.createdAt)}</span>
                 </div>
                 <div className="notification-actions">
                   {!notification.read && (
                     <button
-                      onClick={() => markAsRead(notification.id)}
+                      onClick={() => markNotificationAsRead(notification._id)}
                       className="action-btn read-btn"
                       title="Mark as read"
                     >
@@ -137,7 +91,7 @@ const NotificationCenter = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => deleteNotification(notification.id)}
+                    onClick={() => deleteNotification(notification._id)}
                     className="action-btn delete-btn"
                     title="Delete"
                   >

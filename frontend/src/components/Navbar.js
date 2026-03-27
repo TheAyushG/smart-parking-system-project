@@ -10,7 +10,7 @@ import {
 import './Navbar.css';
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, unreadCount } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,8 +62,19 @@ const Navbar = () => {
                 <FaUser /> My Bookings
               </Link>
               
-              <Link to="/notifications" className="nav-link" onClick={closeMenus}>
-                <FaBell /> Notifications
+              <Link to="/notifications" className="nav-link" onClick={closeMenus} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ position: 'relative' }}>
+                  <FaBell />
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: '-8px', right: '-12px', background: '#ff4d4f', color: '#fff',
+                      fontSize: '0.65rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold'
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                Notifications
               </Link>
 
               <div className="dropdown-container">

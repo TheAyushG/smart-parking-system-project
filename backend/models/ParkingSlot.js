@@ -5,9 +5,10 @@ const slotSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  isAvailable: {
-    type: Boolean,
-    default: true
+  status: {
+    type: String,
+    enum: ['available', 'booked', 'occupied_manual', 'blocked'],
+    default: 'available'
   },
   price: {
     type: Number,
@@ -49,7 +50,7 @@ const parkingSlotSchema = new mongoose.Schema({
 
 // Method to calculate dynamic pricing
 parkingSlotSchema.methods.calculateDynamicPrice = function() {
-  const availableSlots = this.slots.filter(s => s.isAvailable).length;
+  const availableSlots = this.slots.filter(s => s.status === 'available').length;
   const totalSlots = this.slots.length;
   const occupancyRate = 1 - (availableSlots / totalSlots);
   
@@ -58,7 +59,7 @@ parkingSlotSchema.methods.calculateDynamicPrice = function() {
   
   // Update prices based on demand
   this.slots.forEach(slot => {
-    if (slot.isAvailable) {
+    if (slot.status === 'available') {
       slot.price = Math.round(this.basePrice * this.demandMultiplier);
     }
   });

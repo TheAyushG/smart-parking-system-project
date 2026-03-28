@@ -61,6 +61,12 @@ const Navbar = () => {
               <Link to="/my-bookings" className="nav-link" onClick={closeMenus}>
                 <FaUser /> My Bookings
               </Link>
+
+              {user?.role === 'admin' && (
+                <Link to="/admin/dashboard" className="nav-link" onClick={closeMenus}>
+                  <FaShieldAlt /> Admin Dashboard
+                </Link>
+              )}
               
               <Link to="/notifications" className="nav-link" onClick={closeMenus} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <div style={{ position: 'relative' }}>

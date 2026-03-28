@@ -18,6 +18,7 @@ import NotificationCenter from './components/NotificationCenter';
 import ProfileSettings from './components/ProfileSettings';
 import ThemeSettings from './components/ThemeSettings';
 import Navbar from './components/Navbar';
+import AdminDashboard from './components/AdminDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
@@ -25,6 +26,12 @@ import './App.css';
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/login" />;
+}
+
+function AdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  return user?.role === 'admin' ? children : <Navigate to="/" />;
 }
 
 function AppRoutes() {
@@ -73,6 +80,14 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
+      <Route 
+        path="/admin/dashboard" 
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } 
+      />
       <Route path="/theme" element={<ThemeSettings />} />
     </Routes>
   );
@@ -85,8 +100,8 @@ function GlobalNotificationListener() {
     const handleSlotUpdate = (data) => {
       setToast({
         id: Date.now(),
-        message: `Slot #${data.slotNumber} ${data.isAvailable ? 'freed' : 'booked'} at ${data.locationName}!`,
-        type: data.isAvailable ? 'success' : 'info'
+        message: `Slot #${data.slotNumber} changed to ${data.status} at ${data.locationName}!`,
+        type: data.status === 'available' ? 'success' : 'info'
       });
       // Auto-hide after 4 seconds
       const timer = setTimeout(() => setToast(null), 4000);

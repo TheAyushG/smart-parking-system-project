@@ -52,6 +52,13 @@ app.set('io', io);
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
+  
+  // Register user for targeted notifications
+  socket.on('register', (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} registered to socket room`);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
@@ -73,22 +80,25 @@ cron.schedule('* * * * *', async () => {
         const isActive = activeBookings.some(b => 
           b.locationName === parkingData.locationName && b.slotNumber === slot.slotNumber
         );
-        const shouldBeAvailable = !isActive;
-        
-        if (slot.isAvailable !== shouldBeAvailable) {
-          slot.isAvailable = shouldBeAvailable;
-          if (shouldBeAvailable) {
-            slot.bookedBy = null;
-            slot.bookedUntil = null;
-          }
-          isChanged = true;
+        // Only override if it's naturally available or booked
+        if (slot.status === 'available' || slot.status === 'booked') {
+          const newStatus = isActive ? 'booked' : 'available';
           
-          if (io) {
-            io.emit('slotUpdate', {
-              locationName: parkingData.locationName,
-              slotNumber: slot.slotNumber,
-              isAvailable: shouldBeAvailable
-            });
+          if (slot.status !== newStatus) {
+            slot.status = newStatus;
+            if (newStatus === 'available') {
+              slot.bookedBy = null;
+              slot.bookedUntil = null;
+            }
+            isChanged = true;
+            
+            if (io) {
+              io.emit('slotUpdate', {
+                locationName: parkingData.locationName,
+                slotNumber: slot.slotNumber,
+                status: newStatus
+              });
+            }
           }
         }
       }
@@ -107,6 +117,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/parking', require('./routes/parking'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin', require('./routes/admin'));
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ayush_gurjar_parking:BATMANbatman%23123@parkingsystem.m8yupmj.mongodb.net/parkingsystem?retryWrites=true&w=majority';
@@ -150,7 +161,7 @@ async function initializeParkingSlots() {
       for (let i = 1; i <= location.totalSlots; i++) {
         slots.push({
           slotNumber: i,
-          isAvailable: true, // 100% available at start
+          status: 'available', // 100% available at start
           price: 20 + Math.floor(Math.random() * 30) // Price strictly 20-50
         });
       }

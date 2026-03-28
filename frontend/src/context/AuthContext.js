@@ -37,15 +37,15 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Listen for WebSocket notifications perfectly targeted to this user's browser
     const handleNewNotification = (notif) => {
-      // Ensure the notification is for the current user
-      if (user && notif.user === user._id) {
-        setNotifications(prev => [notif, ...prev]);
-      }
+      // Notification may come from 'newNotification' or 'notification' events
+      setNotifications(prev => [notif, ...prev]);
     };
     
     socket.on('newNotification', handleNewNotification);
+    socket.on('notification', handleNewNotification);
     return () => {
       socket.off('newNotification', handleNewNotification);
+      socket.off('notification', handleNewNotification);
     };
   }, [user]);
 
@@ -89,6 +89,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/auth/me`);
       setUser(response.data);
+      socket.emit('register', response.data._id);
     } catch (error) {
       console.error('Error fetching user:', error);
       logout();
@@ -106,6 +107,7 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       setToken(token);
       setUser(user);
+      socket.emit('register', user.id);
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       return { success: true };
@@ -128,6 +130,7 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       setToken(token);
       setUser(user);
+      socket.emit('register', user.id);
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       return { success: true };

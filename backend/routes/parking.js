@@ -63,7 +63,7 @@ router.get('/location/:locationName', async (req, res) => {
     // Calculate dynamic pricing
     await parkingData.calculateDynamicPrice();
 
-    const availableCount = parkingData.slots.filter(s => s.isAvailable).length;
+    const availableCount = parkingData.slots.filter(s => s.status === 'available').length;
     const bookedCount = parkingData.slots.length - availableCount;
 
     res.json({
@@ -97,7 +97,7 @@ router.patch('/slot/:locationName/:slotNumber', async (req, res) => {
       return res.status(404).json({ message: 'Slot not found' });
     }
 
-    slot.isAvailable = isAvailable;
+    slot.status = isAvailable ? 'available' : 'booked';
     if (!isAvailable) {
       slot.bookedBy = req.body.userId || null;
       slot.bookedUntil = req.body.bookedUntil || null;
